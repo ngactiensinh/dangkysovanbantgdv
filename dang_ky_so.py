@@ -4,6 +4,7 @@ import base64
 from datetime import datetime
 import pytz
 from supabase import create_client, Client
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Đăng ký Số Văn Bản - TGDV", page_icon="📑", layout="wide")
 
@@ -44,7 +45,7 @@ DS_NGUOI_KY = [
 def get_vn_now():
     return datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
 
-# --- CSS TÙY CHỈNH ---
+# --- CSS TÙY CHỈNH (CÓ TÍCH HỢP GIAO DIỆN IN PDF) ---
 st.markdown("""
 <style>
     .stApp { background-color: #f4f6f9; }
@@ -53,6 +54,18 @@ st.markdown("""
     .number-display { font-size: 38px; font-weight: 900; color: #C8102E; text-align: center; padding: 20px; background: #fff5f5; border: 2px dashed #C8102E; border-radius: 12px; margin: 10px 0;}
     div[data-testid="stForm"] { background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e0e6ed;}
     .report-card { background-color: #ffffff; padding: 15px; border-radius: 8px; border-left: 5px solid #17a2b8; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px;}
+    
+    /* MA THUẬT DÀN TRANG KHI XUẤT LƯU PDF */
+    @media print {
+        section[data-testid="stSidebar"] { display: none !important; }
+        header[data-testid="stHeader"] { display: none !important; }
+        .stTabs [data-baseweb="tab-list"] { display: none !important; }
+        div[data-testid="stToolbar"] { display: none !important; }
+        iframe { display: none !important; } /* Ẩn nút bấm in khi đang in */
+        .stApp { background-color: #ffffff !important; }
+        .header-box { border-top: none; box-shadow: none; margin-bottom: 10px; padding: 0;}
+        .report-card { border-left: none; box-shadow: none; padding: 0;}
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -147,21 +160,19 @@ with tab2:
                     columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng'}
                 )
                 st.dataframe(df_show, use_container_width=True)
-                
-                # Nút tải Excel/CSV
                 csv = df_show.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(label="⬇️ Tải file danh sách (CSV)", data=csv, file_name=f"SoVanBan_{n_loc}.csv", mime="text/csv")
         else: st.info("Sổ chưa có dữ liệu.")
 
 # ==========================================
-# TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO
+# TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO (CÓ XUẤT PDF)
 # ==========================================
 with tab3:
-    st.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
+    col_t1, col_t2 = st.columns([3, 1])
+    col_t1.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
     
     c1, c2 = st.columns([1, 2])
     bc_nam = c1.selectbox("Chọn Năm báo cáo:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
-    
     ky_bao_cao_list = ["Cả năm (Tháng 1 - 12)", "Quý I", "Quý II", "Quý III", "Quý IV"] + [f"Tháng {i}" for i in range(1, 13)]
     bc_ky = c2.selectbox("Chọn Kỳ báo cáo:", ky_bao_cao_list)
     
@@ -173,7 +184,6 @@ with tab3:
             if df_bc.empty:
                 st.warning(f"Chưa có dữ liệu văn bản nào trong năm {bc_nam}.")
             else:
-                # Xử lý ngày tháng để lọc theo kỳ
                 df_bc['ngay_datetime'] = pd.to_datetime(df_bc['ngay_van_ban'])
                 df_bc['thang'] = df_bc['ngay_datetime'].dt.month
                 
@@ -191,23 +201,38 @@ with tab3:
                     st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
                     
                     col_b1, col_b2 = st.columns(2)
-                    
-                    # 1. Báo cáo theo Lãnh đạo ký
                     with col_b1:
                         st.markdown("#### ✍️ Thống kê theo Người ký")
-                        # Tạo bảng chéo đếm số lượng từng loại VB theo Người ký
                         pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
-                        pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1) # Thêm cột Tổng
+                        pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
                         st.dataframe(pivot_nguoi_ky, use_container_width=True)
                         st.bar_chart(pivot_nguoi_ky.drop(columns=['TỔNG CỘNG']))
                         
-                    # 2. Báo cáo theo Phòng ban trình
                     with col_b2:
                         st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
                         pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
                         pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
                         st.dataframe(pivot_phong_ban, use_container_width=True)
                         st.bar_chart(pivot_phong_ban.drop(columns=['TỔNG CỘNG']))
+                        
+                    st.markdown("---")
+                    # NÚT BẤM XUẤT LƯU PDF MA THUẬT
+                    components.html(
+                        """
+                        <style>
+                        .btn-pdf {
+                            background-color: #004B87; color: white; padding: 12px 24px;
+                            text-align: center; text-decoration: none; display: inline-block;
+                            font-size: 16px; font-weight: bold; border-radius: 8px; border: none; 
+                            cursor: pointer; font-family: sans-serif; width: 100%; 
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;
+                        }
+                        .btn-pdf:hover { background-color: #C8102E; }
+                        </style>
+                        <button class="btn-pdf" onclick="window.parent.print()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO THÀNH FILE PDF</button>
+                        """,
+                        height=60
+                    )
 
 # ==========================================
 # TAB 4: CẤU HÌNH (ADMIN)
