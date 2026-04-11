@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Đăng ký Số Văn Bản - TGDV", page_icon="📑", layout="wide")
 
 # ==========================================
-# CẤU HÌNH SUPABASE
+# CẤU HÌNH SUPABASE & BẢO MẬT
 # ==========================================
 SUPABASE_URL = "https://qqzsdxhqrdfvxnlurnyb.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxenNkeGhxcmRmdnhubHVybnliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MjY0NjAsImV4cCI6MjA5MTIwMjQ2MH0.H62F5zYEZ5l47fS4IdAE2JdRdI7inXQqWG0nvXhn2P8"
@@ -19,8 +19,10 @@ try:
 except:
     pass
 
-# --- MẬT KHẨU & CẤU HÌNH NHIỆM KỲ ---
-PASS_VAN_THU = "Admin@2026"
+# --- 2 LỚP MẬT KHẨU ---
+PASS_CO_QUAN = "TGDV@2026"  # Mật khẩu cổng ngoài cho anh em chuyên viên
+PASS_VAN_THU = "Admin@2026" # Mật khẩu két sắt cho Văn thư/Lãnh đạo
+
 DS_NAM_NHIEM_KY = [2026, 2027, 2028, 2029, 2030]
 
 # --- HÀM LẤY DANH MỤC ĐỘNG TỪ SUPABASE ---
@@ -32,7 +34,7 @@ def get_dynamic_categories():
     except:
         return {}
 
-# --- DANH MỤC CỐ ĐỊNH KHÁC ---
+# --- DANH MỤC CỐ ĐỊNH ---
 DS_PHONG_BAN = ["Văn phòng Ban", "Phòng Lý luận chính trị, Lịch sử Đảng", "Phòng Tuyên truyền, Báo chí - Xuất bản", "Phòng Khoa giáo, Văn hóa - Văn nghệ", "Phòng Dân vận các cơ quan Nhà nước", "Phòng Đoàn thể và các Hội"]
 DS_NGUOI_KY = [
     "Trần Mạnh Lợi - Trưởng Ban", "Nguyễn Lam Sơn - Phó Trưởng ban Thường trực", 
@@ -54,6 +56,7 @@ st.markdown("""
     .number-display { font-size: 38px; font-weight: 900; color: #C8102E; text-align: center; padding: 20px; background: #fff5f5; border: 2px dashed #C8102E; border-radius: 12px; margin: 10px 0;}
     div[data-testid="stForm"] { background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e0e6ed;}
     .report-card { background-color: #ffffff; padding: 15px; border-radius: 8px; border-left: 5px solid #17a2b8; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px;}
+    .login-box { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid #C8102E;}
     
     @media print {
         section[data-testid="stSidebar"] { display: none !important; }
@@ -71,234 +74,230 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# KHU VỰC ĐĂNG NHẬP (SIDEBAR)
+# KHÓA CỔNG LỚP 1 (GLOBAL LOCK)
 # ==========================================
-with st.sidebar:
-    st.markdown("### 🔐 KHU VỰC ADMIN")
-    st.info("Nhập mật khẩu để mở khóa tính năng Báo cáo & Cấu hình.")
-    mk_nhap = st.text_input("Mật khẩu Văn thư:", type="password")
-    is_admin = (mk_nhap == PASS_VAN_THU)
-    if is_admin:
-        st.success("✅ Đã xác thực quyền Admin!")
+if "da_dang_nhap_co_quan" not in st.session_state:
+    st.session_state["da_dang_nhap_co_quan"] = False
 
-st.markdown(f"""<div class="header-box"><div class="main-title">HỆ THỐNG CẤP SỐ VÀ QUẢN LÝ VĂN BẢN ĐI</div><div style="font-size: 13px; font-weight: bold; color: #6c757d; margin-top:3px;">BAN TUYÊN GIÁO VÀ DÂN VẬN TỈNH ỦY TUYÊN QUANG</div></div>""", unsafe_allow_html=True)
-
-DS_LOAI_VB_DONG = get_dynamic_categories()
-nam_hien_tai = get_vn_now().year
-idx_nam_hien_tai = DS_NAM_NHIEM_KY.index(nam_hien_tai) if nam_hien_tai in DS_NAM_NHIEM_KY else 0
-
-# Tùy biến số lượng Tab theo quyền Admin
-if is_admin:
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ", "📊 THỐNG KÊ & BÁO CÁO", "⚙️ CẤU HÌNH"])
-else:
-    tab1, tab2 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ"])
-
-# ==========================================
-# TAB 1: CẤP SỐ (Dành cho tất cả mọi người)
-# ==========================================
-with tab1:
-    if not DS_LOAI_VB_DONG:
-        st.error("⚠️ Hệ thống chưa có danh mục Loại văn bản.")
-    else:
-        col_f, col_r = st.columns([2, 1])
-        with col_f:
-            with st.form("form_cap_so", clear_on_submit=True):
-                st.markdown("### ✍️ Đăng ký văn bản")
-                c1, c2 = st.columns(2)
-                loai_vb = c1.selectbox("📌 Loại văn bản:", list(DS_LOAI_VB_DONG.keys()))
-                phong_ban = c2.selectbox("🏢 Đơn vị soạn thảo:", DS_PHONG_BAN)
-                trich_yeu = st.text_area("📝 Trích yếu nội dung:", height=80)
-                c3, c4, c5 = st.columns([1.5, 1, 1])
-                nguoi_ky = c3.selectbox("✍️ Người ký:", DS_NGUOI_KY)
-                ngay_vb = c4.date_input("📅 Ngày văn bản:", value=get_vn_now().date())
-                nam_chon = ngay_vb.year
-                c5.info(f"📅 Năm: **{nam_chon}**")
-
-                if st.form_submit_button("🚀 LẤY SỐ VĂN BẢN", type="primary", use_container_width=True):
-                    if not trich_yeu.strip(): st.error("⚠️ Nhập trích yếu!")
-                    elif nam_chon not in DS_NAM_NHIEM_KY: st.error("⚠️ Năm không hợp lệ!")
-                    else:
-                        try:
-                            res_so = supabase.table("so_van_ban").select("so_vb").eq("nam", nam_chon).eq("loai_vb", loai_vb).order("so_vb", desc=True).limit(1).execute()
-                            max_so_cap = res_so.data[0]['so_vb'] if res_so.data else 0
-                            
-                            res_moi = supabase.table("cau_hinh_so").select("so_bat_dau").eq("nam", nam_chon).eq("loai_vb", loai_vb).execute()
-                            so_moi_admin = res_moi.data[0]['so_bat_dau'] if res_moi.data else 0
-                            
-                            so_moi = max(max_so_cap, so_moi_admin) + 1
-                            ky_hieu = f"{so_moi}-{DS_LOAI_VB_DONG[loai_vb]}"
-                            
-                            supabase.table("so_van_ban").insert({
-                                "nam": nam_chon, "loai_vb": loai_vb, "so_vb": so_moi, "ky_hieu": ky_hieu, 
-                                "trich_yeu": trich_yeu, "nguoi_ky": nguoi_ky, "phong_ban": phong_ban, "ngay_van_ban": ngay_vb.strftime("%Y-%m-%d")
-                            }).execute()
-                            
-                            st.session_state['vua_cap'] = ky_hieu; st.session_state['vua_ngay'] = ngay_vb.strftime("%d/%m/%Y"); st.session_state['vua_ty'] = trich_yeu
-                            st.success("✅ Cấp số thành công!"); st.rerun()
-                        except Exception as e: st.error(f"Lỗi: {e}")
-        with col_r:
-            if 'vua_cap' in st.session_state:
-                st.markdown(f"<div class='number-display'><div style='font-size:14px; color:#666; font-weight:normal;'>Số văn bản:</div>{st.session_state['vua_cap']}<div style='font-size:14px; color:#666; font-weight:normal; margin-top:10px;'>Ngày văn bản:</div>{st.session_state['vua_ngay']}</div>", unsafe_allow_html=True)
-                st.info(f"**Nội dung:** {st.session_state['vua_ty']}")
-
-# ==========================================
-# TAB 2: TRA CỨU ĐA TẦNG
-# ==========================================
-with tab2:
-    st.markdown("### 🔎 Bộ lọc tra cứu Sổ Văn thư")
-    f1, f2, f3, f4 = st.columns(4)
-    n_loc = f1.selectbox("📅 Nhiệm kỳ / Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
-    l_loc = f2.selectbox("📌 Loại VB:", ["Tất cả"] + list(DS_LOAI_VB_DONG.keys()))
-    p_loc = f3.selectbox("🏢 Đơn vị soạn thảo:", ["Tất cả"] + DS_PHONG_BAN)
-    k_loc = f4.selectbox("✍️ Người ký:", ["Tất cả"] + DS_NGUOI_KY)
-    t_khoa = st.text_input("🔍 Tìm theo trích yếu nội dung...")
+if not st.session_state["da_dang_nhap_co_quan"]:
+    st.markdown("""
+    <div class="login-box">
+        <h2 style="color: #004B87; margin-bottom: 5px;">🔒 HỆ THỐNG BẢO MẬT</h2>
+        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Vui lòng nhập mật khẩu Cơ quan để truy cập Sổ Văn bản</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.button("🔄 Lấy dữ liệu Sổ", type="primary"):
-        res_h = supabase.table("so_van_ban").select("*").eq("nam", n_loc).order("so_vb", desc=True).execute()
-        df = pd.DataFrame(res_h.data)
-        if not df.empty:
-            df['ngay_van_ban'] = pd.to_datetime(df['ngay_van_ban']).dt.strftime("%d/%m/%Y")
-            if l_loc != "Tất cả": df = df[df['loai_vb'] == l_loc]
-            if p_loc != "Tất cả": df = df[df['phong_ban'] == p_loc]
-            if k_loc != "Tất cả": df = df[df['nguoi_ky'] == k_loc]
-            if t_khoa: df = df[df['trich_yeu'].str.contains(t_khoa, case=False, na=False)]
-            
-            if df.empty: st.warning("Không tìm thấy văn bản nào khớp với bộ lọc!")
+    col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
+    with col_l2:
+        mk_co_quan = st.text_input("Mật khẩu:", type="password", label_visibility="collapsed", placeholder="Nhập mật khẩu...")
+        if st.button("🔑 Đăng nhập", use_container_width=True, type="primary"):
+            if mk_co_quan == PASS_CO_QUAN:
+                st.session_state["da_dang_nhap_co_quan"] = True
+                st.rerun()
             else:
-                st.success(f"Tìm thấy **{len(df)}** văn bản.")
-                # Đã sửa "Phòng" thành "Phòng tham mưu"
-                df_show = df[['ngay_van_ban', 'ky_hieu', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(
-                    columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng tham mưu'}
-                )
-                st.dataframe(df_show, use_container_width=True)
-                csv = df_show.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(label="⬇️ Tải file danh sách (CSV)", data=csv, file_name=f"SoVanBan_{n_loc}.csv", mime="text/csv")
-        else: st.info("Sổ chưa có dữ liệu.")
-
-# ==========================================
-# CÁC TAB ẨN DÀNH RIÊNG CHO ADMIN
-# ==========================================
-if is_admin:
-    # --- TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO ---
-    with tab3:
-        col_t1, col_t2 = st.columns([3, 1])
-        col_t1.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
-        
-        c1, c2 = st.columns([1, 2])
-        bc_nam = c1.selectbox("Chọn Năm báo cáo:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
-        ky_bao_cao_list = ["Cả năm (Tháng 1 - 12)", "Quý I", "Quý II", "Quý III", "Quý IV"] + [f"Tháng {i}" for i in range(1, 13)]
-        bc_ky = c2.selectbox("Chọn Kỳ báo cáo:", ky_bao_cao_list)
-        
-        if st.button("📈 Tạo Báo Cáo", type="primary"):
-            with st.spinner("Đang tổng hợp dữ liệu..."):
-                res_bc = supabase.table("so_van_ban").select("*").eq("nam", bc_nam).execute()
-                df_bc = pd.DataFrame(res_bc.data)
+                st.error("❌ Sai mật khẩu truy cập!")
                 
-                if df_bc.empty:
-                    st.warning(f"Chưa có dữ liệu văn bản nào trong năm {bc_nam}.")
-                else:
-                    df_bc['ngay_datetime'] = pd.to_datetime(df_bc['ngay_van_ban'])
-                    df_bc['thang'] = df_bc['ngay_datetime'].dt.month
-                    
-                    if bc_ky == "Quý I": df_bc = df_bc[df_bc['thang'].isin([1, 2, 3])]
-                    elif bc_ky == "Quý II": df_bc = df_bc[df_bc['thang'].isin([4, 5, 6])]
-                    elif bc_ky == "Quý III": df_bc = df_bc[df_bc['thang'].isin([7, 8, 9])]
-                    elif bc_ky == "Quý IV": df_bc = df_bc[df_bc['thang'].isin([10, 11, 12])]
-                    elif bc_ky.startswith("Tháng"): df_bc = df_bc[df_bc['thang'] == int(bc_ky.replace("Tháng ", ""))]
-                    
-                    if df_bc.empty:
-                        st.info(f"Không có văn bản nào phát hành trong {bc_ky} năm {bc_nam}.")
-                    else:
-                        st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
-                        
-                        st.markdown("#### ✍️ Thống kê theo Người ký")
-                        pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
-                        pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
-                        pivot_nguoi_ky.loc['TỔNG SỐ (Tất cả Lãnh đạo)'] = pivot_nguoi_ky.sum()
-                        st.table(pivot_nguoi_ky)
-                        st.bar_chart(pivot_nguoi_ky.drop(index='TỔNG SỐ (Tất cả Lãnh đạo)', columns=['TỔNG CỘNG']))
-                        
-                        st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
-                        pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
-                        pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
-                        pivot_phong_ban.loc['TỔNG SỐ (Tất cả Phòng ban)'] = pivot_phong_ban.sum()
-                        st.table(pivot_phong_ban)
-                        st.bar_chart(pivot_phong_ban.drop(index='TỔNG SỐ (Tất cả Phòng ban)', columns=['TỔNG CỘNG']))
-                            
-                        st.markdown("---")
-                        components.html(
-                            """
-                            <style>
-                            .btn-pdf {
-                                background-color: #004B87; color: white; padding: 12px 24px;
-                                text-align: center; text-decoration: none; display: inline-block;
-                                font-size: 16px; font-weight: bold; border-radius: 8px; border: none; 
-                                cursor: pointer; font-family: sans-serif; width: 100%; 
-                                box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;
-                            }
-                            .btn-pdf:hover { background-color: #C8102E; }
-                            </style>
-                            <button class="btn-pdf" onclick="window.parent.print()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO THÀNH FILE PDF</button>
-                            """,
-                            height=60
-                        )
+else:
+    # ==========================================
+    # PHẦN RUỘT PHẦN MỀM (SAU KHI QUA CỔNG)
+    # ==========================================
+    
+    # KHU VỰC ĐĂNG NHẬP ADMIN (SIDEBAR)
+    with st.sidebar:
+        st.markdown("### 🔐 KHU VỰC ADMIN")
+        st.info("Mở khóa tính năng Báo cáo & Cấu hình.")
+        mk_nhap = st.text_input("Mật khẩu Văn thư:", type="password")
+        is_admin = (mk_nhap == PASS_VAN_THU)
+        if is_admin:
+            st.success("✅ Đã xác thực quyền Admin!")
+        st.write("---")
+        if st.button("🚪 Đăng xuất khỏi Hệ thống"):
+            st.session_state["da_dang_nhap_co_quan"] = False
+            st.rerun()
 
-    # --- TAB 4: CẤU HÌNH (ADMIN) ---
-    with tab4:
-        st.markdown("### ⚙️ QUẢN TRỊ HỆ THỐNG")
-        c_left, c_right = st.columns([1, 1.2])
+    st.markdown(f"""<div class="header-box"><div class="main-title">HỆ THỐNG CẤP SỐ VÀ QUẢN LÝ VĂN BẢN ĐI</div><div style="font-size: 13px; font-weight: bold; color: #6c757d; margin-top:3px;">BAN TUYÊN GIÁO VÀ DÂN VẬN TỈNH ỦY TUYÊN QUANG</div></div>""", unsafe_allow_html=True)
+
+    DS_LOAI_VB_DONG = get_dynamic_categories()
+    nam_hien_tai = get_vn_now().year
+    idx_nam_hien_tai = DS_NAM_NHIEM_KY.index(nam_hien_tai) if nam_hien_tai in DS_NAM_NHIEM_KY else 0
+
+    if is_admin:
+        tab1, tab2, tab3, tab4 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ", "📊 THỐNG KÊ & BÁO CÁO", "⚙️ CẤU HÌNH"])
+    else:
+        tab1, tab2 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ"])
+
+    # --- TAB 1: CẤP SỐ ---
+    with tab1:
+        if not DS_LOAI_VB_DONG:
+            st.error("⚠️ Hệ thống chưa có danh mục Loại văn bản.")
+        else:
+            col_f, col_r = st.columns([2, 1])
+            with col_f:
+                with st.form("form_cap_so", clear_on_submit=True):
+                    st.markdown("### ✍️ Đăng ký văn bản")
+                    c1, c2 = st.columns(2)
+                    loai_vb = c1.selectbox("📌 Loại văn bản:", list(DS_LOAI_VB_DONG.keys()))
+                    phong_ban = c2.selectbox("🏢 Đơn vị soạn thảo:", DS_PHONG_BAN)
+                    trich_yeu = st.text_area("📝 Trích yếu nội dung:", height=80)
+                    c3, c4, c5 = st.columns([1.5, 1, 1])
+                    nguoi_ky = c3.selectbox("✍️ Người ký:", DS_NGUOI_KY)
+                    ngay_vb = c4.date_input("📅 Ngày văn bản:", value=get_vn_now().date())
+                    nam_chon = ngay_vb.year
+                    c5.info(f"📅 Năm: **{nam_chon}**")
+
+                    if st.form_submit_button("🚀 LẤY SỐ VĂN BẢN", type="primary", use_container_width=True):
+                        if not trich_yeu.strip(): st.error("⚠️ Nhập trích yếu!")
+                        elif nam_chon not in DS_NAM_NHIEM_KY: st.error("⚠️ Năm không hợp lệ!")
+                        else:
+                            try:
+                                res_so = supabase.table("so_van_ban").select("so_vb").eq("nam", nam_chon).eq("loai_vb", loai_vb).order("so_vb", desc=True).limit(1).execute()
+                                max_so_cap = res_so.data[0]['so_vb'] if res_so.data else 0
+                                res_moi = supabase.table("cau_hinh_so").select("so_bat_dau").eq("nam", nam_chon).eq("loai_vb", loai_vb).execute()
+                                so_moi_admin = res_moi.data[0]['so_bat_dau'] if res_moi.data else 0
+                                so_moi = max(max_so_cap, so_moi_admin) + 1
+                                ky_hieu = f"{so_moi}-{DS_LOAI_VB_DONG[loai_vb]}"
+                                
+                                supabase.table("so_van_ban").insert({"nam": nam_chon, "loai_vb": loai_vb, "so_vb": so_moi, "ky_hieu": ky_hieu, "trich_yeu": trich_yeu, "nguoi_ky": nguoi_ky, "phong_ban": phong_ban, "ngay_van_ban": ngay_vb.strftime("%Y-%m-%d")}).execute()
+                                st.session_state['vua_cap'] = ky_hieu; st.session_state['vua_ngay'] = ngay_vb.strftime("%d/%m/%Y"); st.session_state['vua_ty'] = trich_yeu
+                                st.success("✅ Cấp số thành công!"); st.rerun()
+                            except Exception as e: st.error(f"Lỗi: {e}")
+            with col_r:
+                if 'vua_cap' in st.session_state:
+                    st.markdown(f"<div class='number-display'><div style='font-size:14px; color:#666; font-weight:normal;'>Số văn bản:</div>{st.session_state['vua_cap']}<div style='font-size:14px; color:#666; font-weight:normal; margin-top:10px;'>Ngày văn bản:</div>{st.session_state['vua_ngay']}</div>", unsafe_allow_html=True)
+                    st.info(f"**Nội dung:** {st.session_state['vua_ty']}")
+
+    # --- TAB 2: TRA CỨU ĐA TẦNG ---
+    with tab2:
+        st.markdown("### 🔎 Bộ lọc tra cứu Sổ Văn thư")
+        f1, f2, f3, f4 = st.columns(4)
+        n_loc = f1.selectbox("📅 Nhiệm kỳ / Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
+        l_loc = f2.selectbox("📌 Loại VB:", ["Tất cả"] + list(DS_LOAI_VB_DONG.keys()))
+        p_loc = f3.selectbox("🏢 Đơn vị soạn thảo:", ["Tất cả"] + DS_PHONG_BAN)
+        k_loc = f4.selectbox("✍️ Người ký:", ["Tất cả"] + DS_NGUOI_KY)
+        t_khoa = st.text_input("🔍 Tìm theo trích yếu nội dung...")
         
-        with c_left:
-            st.markdown("#### 📁 Quản lý Danh mục Loại văn bản")
-            with st.form("form_add_cate", clear_on_submit=True):
-                new_ten = st.text_input("Tên loại mới (VD: Quy định):")
-                new_kh = st.text_input("Ký hiệu đi kèm (VD: QĐi/BTGDV):")
-                if st.form_submit_button("➕ THÊM LOẠI VĂN BẢN MỚI"):
-                    if new_ten and new_kh:
-                        try:
-                            supabase.table("danh_muc_loai_vb").insert({"ten_loai": new_ten, "ky_hieu": new_kh}).execute()
-                            st.success(f"✅ Đã thêm '{new_ten}'!"); st.cache_data.clear(); st.rerun()
-                        except: st.error("❌ Bị trùng tên hoặc có lỗi xảy ra.")
-            if DS_LOAI_VB_DONG:
-                st.markdown("**Danh sách đang dùng:**")
-                for ten, kh in DS_LOAI_VB_DONG.items():
-                    if st.button(f"🗑️ Xóa {ten} ({kh})", key=f"del_{kh}"):
-                        supabase.table("danh_muc_loai_vb").delete().eq("ten_loai", ten).execute()
-                        st.cache_data.clear(); st.rerun()
+        if st.button("🔄 Lấy dữ liệu Sổ", type="primary"):
+            res_h = supabase.table("so_van_ban").select("*").eq("nam", n_loc).order("so_vb", desc=True).execute()
+            df = pd.DataFrame(res_h.data)
+            if not df.empty:
+                df['ngay_van_ban'] = pd.to_datetime(df['ngay_van_ban']).dt.strftime("%d/%m/%Y")
+                if l_loc != "Tất cả": df = df[df['loai_vb'] == l_loc]
+                if p_loc != "Tất cả": df = df[df['phong_ban'] == p_loc]
+                if k_loc != "Tất cả": df = df[df['nguoi_ky'] == k_loc]
+                if t_khoa: df = df[df['trich_yeu'].str.contains(t_khoa, case=False, na=False)]
+                
+                if df.empty: st.warning("Không tìm thấy văn bản nào khớp với bộ lọc!")
+                else:
+                    st.success(f"Tìm thấy **{len(df)}** văn bản.")
+                    df_show = df[['ngay_van_ban', 'ky_hieu', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng tham mưu'})
+                    st.dataframe(df_show, use_container_width=True)
+                    csv = df_show.to_csv(index=False).encode('utf-8-sig')
+                    st.download_button(label="⬇️ Tải file danh sách (CSV)", data=csv, file_name=f"SoVanBan_{n_loc}.csv", mime="text/csv")
+            else: st.info("Sổ chưa có dữ liệu.")
 
-        with c_right:
-            st.markdown("#### 🗑️ Xóa Văn bản Cấp nhầm (Xóa nháp)")
-            st.info("Nhập chính xác Số/Ký hiệu để xóa văn bản khỏi Sổ (VD: 100-TTr-TU)")
-            with st.form("form_del_doc", clear_on_submit=True):
-                doc_to_del = st.text_input("Nhập Số/Ký hiệu cần xóa:")
-                if st.form_submit_button("🗑️ XÓA VĂN BẢN NÀY"):
-                    if doc_to_del:
-                        try:
-                            supabase.table("so_van_ban").delete().eq("ky_hieu", doc_to_del.strip()).execute()
-                            st.success(f"✅ Đã dọn dẹp văn bản: {doc_to_del}"); st.rerun()
-                        except Exception as e: st.error(f"Lỗi: {e}")
-
-            st.write("---")
-            st.markdown("#### 🛠️ Quản lý Mồi số hiện tại")
-            with st.form("form_config"):
-                cfg_nam = st.selectbox("Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
-                cfg_loai = st.selectbox("Loại VB:", list(DS_LOAI_VB_DONG.keys()))
-                cfg_so = st.number_input("Số hiện tại muốn thiết lập:", min_value=0, step=1)
-                if st.form_submit_button("💾 LƯU CẤU HÌNH"):
-                    try:
-                        check = supabase.table("cau_hinh_so").select("*").eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
-                        if check.data: supabase.table("cau_hinh_so").update({"so_bat_dau": cfg_so}).eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
-                        else: supabase.table("cau_hinh_so").insert({"nam": cfg_nam, "loai_vb": cfg_loai, "so_bat_dau": cfg_so}).execute()
-                        st.success("✅ Đã cập nhật số mồi!"); st.rerun()
-                    except Exception as e: st.error(f"Lỗi: {e}")
+    # --- CÁC TAB ẨN DÀNH RIÊNG CHO ADMIN ---
+    if is_admin:
+        with tab3:
+            col_t1, col_t2 = st.columns([3, 1])
+            col_t1.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
+            c1, c2 = st.columns([1, 2])
+            bc_nam = c1.selectbox("Chọn Năm báo cáo:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
+            ky_bao_cao_list = ["Cả năm (Tháng 1 - 12)", "Quý I", "Quý II", "Quý III", "Quý IV"] + [f"Tháng {i}" for i in range(1, 13)]
+            bc_ky = c2.selectbox("Chọn Kỳ báo cáo:", ky_bao_cao_list)
             
-            st.markdown("**📋 Danh sách các số đã mồi:**")
-            res_cfg = supabase.table("cau_hinh_so").select("*").order("nam", desc=True).execute()
-            if res_cfg.data:
-                for item in res_cfg.data:
-                    col_info, col_del = st.columns([3, 1])
-                    col_info.write(f"📅 **{item['nam']}** | {item['loai_vb']}: Số **{item['so_bat_dau']}**")
-                    if col_del.button("🗑️ Xóa", key=f"del_cfg_{item['id']}"):
-                        supabase.table("cau_hinh_so").delete().eq("id", item['id']).execute()
-                        st.warning(f"Đã xóa cấu hình {item['loai_vb']}"); st.rerun()
-            else: st.info("Chưa có cấu hình mồi số nào.")
+            if st.button("📈 Tạo Báo Cáo", type="primary"):
+                with st.spinner("Đang tổng hợp dữ liệu..."):
+                    res_bc = supabase.table("so_van_ban").select("*").eq("nam", bc_nam).execute()
+                    df_bc = pd.DataFrame(res_bc.data)
+                    if df_bc.empty: st.warning(f"Chưa có dữ liệu văn bản nào trong năm {bc_nam}.")
+                    else:
+                        df_bc['ngay_datetime'] = pd.to_datetime(df_bc['ngay_van_ban'])
+                        df_bc['thang'] = df_bc['ngay_datetime'].dt.month
+                        if bc_ky == "Quý I": df_bc = df_bc[df_bc['thang'].isin([1, 2, 3])]
+                        elif bc_ky == "Quý II": df_bc = df_bc[df_bc['thang'].isin([4, 5, 6])]
+                        elif bc_ky == "Quý III": df_bc = df_bc[df_bc['thang'].isin([7, 8, 9])]
+                        elif bc_ky == "Quý IV": df_bc = df_bc[df_bc['thang'].isin([10, 11, 12])]
+                        elif bc_ky.startswith("Tháng"): df_bc = df_bc[df_bc['thang'] == int(bc_ky.replace("Tháng ", ""))]
+                        
+                        if df_bc.empty: st.info(f"Không có văn bản nào phát hành trong {bc_ky} năm {bc_nam}.")
+                        else:
+                            st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
+                            st.markdown("#### ✍️ Thống kê theo Người ký")
+                            pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
+                            pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
+                            pivot_nguoi_ky.loc['TỔNG SỐ (Tất cả Lãnh đạo)'] = pivot_nguoi_ky.sum()
+                            st.table(pivot_nguoi_ky)
+                            st.bar_chart(pivot_nguoi_ky.drop(index='TỔNG SỐ (Tất cả Lãnh đạo)', columns=['TỔNG CỘNG']))
+                            st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
+                            pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
+                            pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
+                            pivot_phong_ban.loc['TỔNG SỐ (Tất cả Phòng ban)'] = pivot_phong_ban.sum()
+                            st.table(pivot_phong_ban)
+                            st.bar_chart(pivot_phong_ban.drop(index='TỔNG SỐ (Tất cả Phòng ban)', columns=['TỔNG CỘNG']))
+                            st.markdown("---")
+                            components.html(
+                                """
+                                <style>
+                                .btn-pdf { background-color: #004B87; color: white; padding: 12px 24px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; font-family: sans-serif; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;}
+                                .btn-pdf:hover { background-color: #C8102E; }
+                                </style>
+                                <button class="btn-pdf" onclick="window.parent.print()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO THÀNH FILE PDF</button>
+                                """, height=60
+                            )
+
+        with tab4:
+            st.markdown("### ⚙️ QUẢN TRỊ HỆ THỐNG")
+            c_left, c_right = st.columns([1, 1.2])
+            with c_left:
+                st.markdown("#### 📁 Quản lý Danh mục Loại văn bản")
+                with st.form("form_add_cate", clear_on_submit=True):
+                    new_ten = st.text_input("Tên loại mới (VD: Quy định):")
+                    new_kh = st.text_input("Ký hiệu đi kèm (VD: QĐi/BTGDV):")
+                    if st.form_submit_button("➕ THÊM LOẠI VĂN BẢN MỚI"):
+                        if new_ten and new_kh:
+                            try:
+                                supabase.table("danh_muc_loai_vb").insert({"ten_loai": new_ten, "ky_hieu": new_kh}).execute()
+                                st.success(f"✅ Đã thêm '{new_ten}'!"); st.cache_data.clear(); st.rerun()
+                            except: st.error("❌ Bị trùng tên hoặc có lỗi xảy ra.")
+                if DS_LOAI_VB_DONG:
+                    st.markdown("**Danh sách đang dùng:**")
+                    for ten, kh in DS_LOAI_VB_DONG.items():
+                        if st.button(f"🗑️ Xóa {ten} ({kh})", key=f"del_{kh}"):
+                            supabase.table("danh_muc_loai_vb").delete().eq("ten_loai", ten).execute()
+                            st.cache_data.clear(); st.rerun()
+
+            with c_right:
+                st.markdown("#### 🗑️ Xóa Văn bản Cấp nhầm (Xóa nháp)")
+                st.info("Nhập chính xác Số/Ký hiệu để xóa văn bản khỏi Sổ (VD: 100-TTr/BTGDV)")
+                with st.form("form_del_doc", clear_on_submit=True):
+                    doc_to_del = st.text_input("Nhập Số/Ký hiệu cần xóa:")
+                    if st.form_submit_button("🗑️ XÓA VĂN BẢN NÀY"):
+                        if doc_to_del:
+                            try:
+                                supabase.table("so_van_ban").delete().eq("ky_hieu", doc_to_del.strip()).execute()
+                                st.success(f"✅ Đã dọn dẹp văn bản: {doc_to_del}"); st.rerun()
+                            except Exception as e: st.error(f"Lỗi: {e}")
+
+                st.write("---")
+                st.markdown("#### 🛠️ Quản lý Mồi số hiện tại")
+                with st.form("form_config"):
+                    cfg_nam = st.selectbox("Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
+                    cfg_loai = st.selectbox("Loại VB:", list(DS_LOAI_VB_DONG.keys()))
+                    cfg_so = st.number_input("Số hiện tại muốn thiết lập:", min_value=0, step=1)
+                    if st.form_submit_button("💾 LƯU CẤU HÌNH"):
+                        try:
+                            check = supabase.table("cau_hinh_so").select("*").eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
+                            if check.data: supabase.table("cau_hinh_so").update({"so_bat_dau": cfg_so}).eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
+                            else: supabase.table("cau_hinh_so").insert({"nam": cfg_nam, "loai_vb": cfg_loai, "so_bat_dau": cfg_so}).execute()
+                            st.success("✅ Đã cập nhật số mồi!"); st.rerun()
+                        except Exception as e: st.error(f"Lỗi: {e}")
+                st.markdown("**📋 Danh sách các số đã mồi:**")
+                res_cfg = supabase.table("cau_hinh_so").select("*").order("nam", desc=True).execute()
+                if res_cfg.data:
+                    for item in res_cfg.data:
+                        col_info, col_del = st.columns([3, 1])
+                        col_info.write(f"📅 **{item['nam']}** | {item['loai_vb']}: Số **{item['so_bat_dau']}**")
+                        if col_del.button("🗑️ Xóa", key=f"del_cfg_{item['id']}"):
+                            supabase.table("cau_hinh_so").delete().eq("id", item['id']).execute()
+                            st.warning(f"Đã xóa cấu hình {item['loai_vb']}"); st.rerun()
+                else: st.info("Chưa có cấu hình mồi số nào.")
