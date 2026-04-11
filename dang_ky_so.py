@@ -31,8 +31,28 @@ def get_dynamic_categories():
         return {}
 
 # --- DANH MỤC KHÁC ---
-DS_PHONG_BAN = ["Văn phòng Ban", "Phòng Lý luận chính trị, Lịch sử Đảng", "Phòng Tuyên truyền, Báo chí - Xuất bản", "Phòng Khoa giáo, Văn hóa - Văn nghệ", "Phòng Dân vận các cơ quan Nhà nước", "Phòng Đoàn thể và các Hội"]
-DS_NGUOI_KY = ["Trưởng Ban", "Phó Trưởng ban Thường trực", "Phó Trưởng Ban", "Chánh Văn phòng", "KT. Chánh Văn phòng"]
+DS_PHONG_BAN = [
+    "Văn phòng Ban", 
+    "Phòng Lý luận chính trị, Lịch sử Đảng", 
+    "Phòng Tuyên truyền, Báo chí - Xuất bản", 
+    "Phòng Khoa giáo, Văn hóa - Văn nghệ", 
+    "Phòng Dân vận các cơ quan Nhà nước", 
+    "Phòng Đoàn thể và các Hội"
+]
+
+# ĐÃ CẬP NHẬT DANH SÁCH LÃNH ĐẠO ĐÍCH DANH
+DS_NGUOI_KY = [
+    "Trần Mạnh Lợi - Trưởng Ban", 
+    "Nguyễn Lam Sơn - Phó Trưởng ban Thường trực", 
+    "Lê Mạnh Cường - Phó Trưởng Ban", 
+    "Chẩu Thị Thu - Phó Trưởng Ban", 
+    "Hoàng Thị Hằng - Phó Trưởng Ban", 
+    "Nguyễn Văn Hưng - Phó Trưởng Ban", 
+    "Vương Thúy Hằng - Phó Trưởng Ban", 
+    "Đặng Ái Xoan - Phó Trưởng Ban", 
+    "Đinh Thị Thúy - Chánh Văn phòng",
+    "KT. Chánh Văn phòng"
+]
 
 def get_vn_now():
     return datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
@@ -70,7 +90,6 @@ with tab1:
                 
                 c3, c4, c5 = st.columns([1.5, 1, 1])
                 nguoi_ky = c3.selectbox("✍️ Người ký:", DS_NGUOI_KY)
-                # BỔ SUNG NGÀY VĂN BẢN
                 ngay_vb = c4.date_input("📅 Ngày văn bản:", value=get_vn_now().date())
                 nam_hien_tai = ngay_vb.year
                 c5.info(f"📅 Năm: **{nam_hien_tai}**")
@@ -124,7 +143,6 @@ with tab2:
         res_h = supabase.table("so_van_ban").select("*").eq("nam", n_loc).order("so_vb", desc=True).execute()
         df = pd.DataFrame(res_h.data)
         if not df.empty:
-            # Format lại ngày hiển thị cho đẹp
             df['ngay_van_ban'] = pd.to_datetime(df['ngay_van_ban']).dt.strftime("%d/%m/%Y")
             if l_loc != "Tất cả": df = df[df['loai_vb'] == l_loc]
             if t_khoa: df = df[df['trich_yeu'].str.contains(t_khoa, case=False, na=False)]
@@ -134,7 +152,7 @@ with tab2:
             ), use_container_width=True)
         else: st.info("Sổ chưa có dữ liệu.")
 
-# --- TAB 3: CẤU HÌNH (ADMIN) --- (Giữ nguyên như bản V3)
+# --- TAB 3: CẤU HÌNH (ADMIN) ---
 with tab3:
     st.markdown("### ⚙️ QUẢN TRỊ HỆ THỐNG")
     mk = st.text_input("Nhập mật khẩu Văn thư:", type="password")
