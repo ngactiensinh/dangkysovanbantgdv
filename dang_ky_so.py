@@ -82,7 +82,7 @@ if "da_dang_nhap_co_quan" not in st.session_state:
 if not st.session_state["da_dang_nhap_co_quan"]:
     st.markdown("""
     <div class="login-box">
-        <h2 style="color: #004B87; margin-bottom: 5px;">🔒 HỆ THỐNG BẢO MẬT</h2>
+        <h2 style="color: #004B87; margin-bottom: 5px;">🔒 HỆ THỐNG BẢO MẬT CỦA ỨNG DỤNG ĐĂNG KÝ SỐ VĂN BẢN</h2>
         <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Vui lòng nhập mật khẩu Cơ quan để truy cập Sổ Văn bản</p>
     </div>
     """, unsafe_allow_html=True)
