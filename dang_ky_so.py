@@ -45,7 +45,7 @@ DS_NGUOI_KY = [
 def get_vn_now():
     return datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
 
-# --- CSS TÙY CHỈNH (CÓ TÍCH HỢP GIAO DIỆN IN PDF) ---
+# --- CSS TÙY CHỈNH ---
 st.markdown("""
 <style>
     .stApp { background-color: #f4f6f9; }
@@ -61,10 +61,13 @@ st.markdown("""
         header[data-testid="stHeader"] { display: none !important; }
         .stTabs [data-baseweb="tab-list"] { display: none !important; }
         div[data-testid="stToolbar"] { display: none !important; }
-        iframe { display: none !important; } /* Ẩn nút bấm in khi đang in */
+        iframe { display: none !important; }
         .stApp { background-color: #ffffff !important; }
         .header-box { border-top: none; box-shadow: none; margin-bottom: 10px; padding: 0;}
         .report-card { border-left: none; box-shadow: none; padding: 0;}
+        /* Thu nhỏ chữ bảng để không bị tràn viền khi in */
+        table { font-size: 11px !important; }
+        th { background-color: #f0f2f6 !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -100,7 +103,7 @@ with tab1:
 
                 if st.form_submit_button("🚀 LẤY SỐ VĂN BẢN", type="primary", use_container_width=True):
                     if not trich_yeu.strip(): st.error("⚠️ Nhập trích yếu!")
-                    elif nam_chon not in DS_NAM_NHIEM_KY: st.error("⚠️ Năm văn bản không nằm trong nhiệm kỳ 2026-2030!")
+                    elif nam_chon not in DS_NAM_NHIEM_KY: st.error("⚠️ Năm không hợp lệ!")
                     else:
                         try:
                             res_so = supabase.table("so_van_ban").select("so_vb").eq("nam", nam_chon).eq("loai_vb", loai_vb).order("so_vb", desc=True).limit(1).execute()
@@ -122,12 +125,7 @@ with tab1:
                         except Exception as e: st.error(f"Lỗi: {e}")
         with col_r:
             if 'vua_cap' in st.session_state:
-                st.markdown(f"""
-                <div class='number-display'>
-                    <div style='font-size:14px; color:#666; font-weight:normal;'>Số văn bản:</div>{st.session_state['vua_cap']}
-                    <div style='font-size:14px; color:#666; font-weight:normal; margin-top:10px;'>Ngày văn bản:</div>{st.session_state['vua_ngay']}
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"<div class='number-display'><div style='font-size:14px; color:#666; font-weight:normal;'>Số văn bản:</div>{st.session_state['vua_cap']}<div style='font-size:14px; color:#666; font-weight:normal; margin-top:10px;'>Ngày văn bản:</div>{st.session_state['vua_ngay']}</div>", unsafe_allow_html=True)
                 st.info(f"**Nội dung:** {st.session_state['vua_ty']}")
 
 # ==========================================
@@ -152,20 +150,17 @@ with tab2:
             if k_loc != "Tất cả": df = df[df['nguoi_ky'] == k_loc]
             if t_khoa: df = df[df['trich_yeu'].str.contains(t_khoa, case=False, na=False)]
             
-            if df.empty:
-                st.warning("Không tìm thấy văn bản nào khớp với bộ lọc!")
+            if df.empty: st.warning("Không tìm thấy văn bản nào khớp với bộ lọc!")
             else:
                 st.success(f"Tìm thấy **{len(df)}** văn bản.")
-                df_show = df[['ngay_van_ban', 'ky_hieu', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(
-                    columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng'}
-                )
+                df_show = df[['ngay_van_ban', 'ky_hieu', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng'})
                 st.dataframe(df_show, use_container_width=True)
                 csv = df_show.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(label="⬇️ Tải file danh sách (CSV)", data=csv, file_name=f"SoVanBan_{n_loc}.csv", mime="text/csv")
         else: st.info("Sổ chưa có dữ liệu.")
 
 # ==========================================
-# TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO (CÓ XUẤT PDF)
+# TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO (BẢNG FULL CHUẨN IN PDF)
 # ==========================================
 with tab3:
     col_t1, col_t2 = st.columns([3, 1])
@@ -191,32 +186,34 @@ with tab3:
                 elif bc_ky == "Quý II": df_bc = df_bc[df_bc['thang'].isin([4, 5, 6])]
                 elif bc_ky == "Quý III": df_bc = df_bc[df_bc['thang'].isin([7, 8, 9])]
                 elif bc_ky == "Quý IV": df_bc = df_bc[df_bc['thang'].isin([10, 11, 12])]
-                elif bc_ky.startswith("Tháng"):
-                    thang_so = int(bc_ky.replace("Tháng ", ""))
-                    df_bc = df_bc[df_bc['thang'] == thang_so]
+                elif bc_ky.startswith("Tháng"): df_bc = df_bc[df_bc['thang'] == int(bc_ky.replace("Tháng ", ""))]
                 
                 if df_bc.empty:
                     st.info(f"Không có văn bản nào phát hành trong {bc_ky} năm {bc_nam}.")
                 else:
                     st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
                     
-                    col_b1, col_b2 = st.columns(2)
-                    with col_b1:
-                        st.markdown("#### ✍️ Thống kê theo Người ký")
-                        pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
-                        pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
-                        st.dataframe(pivot_nguoi_ky, use_container_width=True)
-                        st.bar_chart(pivot_nguoi_ky.drop(columns=['TỔNG CỘNG']))
-                        
-                    with col_b2:
-                        st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
-                        pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
-                        pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
-                        st.dataframe(pivot_phong_ban, use_container_width=True)
-                        st.bar_chart(pivot_phong_ban.drop(columns=['TỔNG CỘNG']))
+                    st.markdown("#### ✍️ Thống kê theo Người ký")
+                    pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
+                    pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
+                    # Thêm dòng tổng dưới cùng
+                    pivot_nguoi_ky.loc['TỔNG SỐ (Tất cả Lãnh đạo)'] = pivot_nguoi_ky.sum()
+                    st.table(pivot_nguoi_ky)
+                    
+                    # Biểu đồ Người ký (Loại bỏ dòng Tổng cộng khi vẽ biểu đồ)
+                    st.bar_chart(pivot_nguoi_ky.drop(index='TỔNG SỐ (Tất cả Lãnh đạo)', columns=['TỔNG CỘNG']))
+                    
+                    st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
+                    pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
+                    pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
+                    # Thêm dòng tổng dưới cùng
+                    pivot_phong_ban.loc['TỔNG SỐ (Tất cả Phòng ban)'] = pivot_phong_ban.sum()
+                    st.table(pivot_phong_ban)
+                    
+                    # Biểu đồ Đơn vị (Loại bỏ dòng Tổng cộng khi vẽ biểu đồ)
+                    st.bar_chart(pivot_phong_ban.drop(index='TỔNG SỐ (Tất cả Phòng ban)', columns=['TỔNG CỘNG']))
                         
                     st.markdown("---")
-                    # NÚT BẤM XUẤT LƯU PDF MA THUẬT
                     components.html(
                         """
                         <style>
