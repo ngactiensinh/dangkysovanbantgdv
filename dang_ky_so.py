@@ -55,7 +55,6 @@ st.markdown("""
     div[data-testid="stForm"] { background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e0e6ed;}
     .report-card { background-color: #ffffff; padding: 15px; border-radius: 8px; border-left: 5px solid #17a2b8; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px;}
     
-    /* MA THUẬT DÀN TRANG KHI XUẤT LƯU PDF */
     @media print {
         section[data-testid="stSidebar"] { display: none !important; }
         header[data-testid="stHeader"] { display: none !important; }
@@ -65,12 +64,22 @@ st.markdown("""
         .stApp { background-color: #ffffff !important; }
         .header-box { border-top: none; box-shadow: none; margin-bottom: 10px; padding: 0;}
         .report-card { border-left: none; box-shadow: none; padding: 0;}
-        /* Thu nhỏ chữ bảng để không bị tràn viền khi in */
         table { font-size: 11px !important; }
         th { background-color: #f0f2f6 !important; }
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# KHU VỰC ĐĂNG NHẬP (SIDEBAR)
+# ==========================================
+with st.sidebar:
+    st.markdown("### 🔐 KHU VỰC ADMIN")
+    st.info("Nhập mật khẩu để mở khóa tính năng Báo cáo & Cấu hình.")
+    mk_nhap = st.text_input("Mật khẩu Văn thư:", type="password")
+    is_admin = (mk_nhap == PASS_VAN_THU)
+    if is_admin:
+        st.success("✅ Đã xác thực quyền Admin!")
 
 st.markdown(f"""<div class="header-box"><div class="main-title">HỆ THỐNG CẤP SỐ VÀ QUẢN LÝ VĂN BẢN ĐI</div><div style="font-size: 13px; font-weight: bold; color: #6c757d; margin-top:3px;">BAN TUYÊN GIÁO VÀ DÂN VẬN TỈNH ỦY TUYÊN QUANG</div></div>""", unsafe_allow_html=True)
 
@@ -78,10 +87,14 @@ DS_LOAI_VB_DONG = get_dynamic_categories()
 nam_hien_tai = get_vn_now().year
 idx_nam_hien_tai = DS_NAM_NHIEM_KY.index(nam_hien_tai) if nam_hien_tai in DS_NAM_NHIEM_KY else 0
 
-tab1, tab2, tab3, tab4 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ", "📊 THỐNG KÊ & BÁO CÁO", "⚙️ CẤU HÌNH"])
+# Tùy biến số lượng Tab theo quyền Admin
+if is_admin:
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ", "📊 THỐNG KÊ & BÁO CÁO", "⚙️ CẤU HÌNH"])
+else:
+    tab1, tab2 = st.tabs(["📝 CẤP SỐ", "📂 TRA CỨU SỔ VĂN THƯ"])
 
 # ==========================================
-# TAB 1: CẤP SỐ (Chuyên viên)
+# TAB 1: CẤP SỐ (Dành cho tất cả mọi người)
 # ==========================================
 with tab1:
     if not DS_LOAI_VB_DONG:
@@ -153,92 +166,86 @@ with tab2:
             if df.empty: st.warning("Không tìm thấy văn bản nào khớp với bộ lọc!")
             else:
                 st.success(f"Tìm thấy **{len(df)}** văn bản.")
-                df_show = df[['ngay_van_ban', 'ky_hieu', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng'})
+                # Đã sửa "Phòng" thành "Phòng tham mưu"
+                df_show = df[['ngay_van_ban', 'ky_hieu', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(
+                    columns={'ngay_van_ban':'Ngày VB', 'ky_hieu':'Số/Ký hiệu', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng tham mưu'}
+                )
                 st.dataframe(df_show, use_container_width=True)
                 csv = df_show.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(label="⬇️ Tải file danh sách (CSV)", data=csv, file_name=f"SoVanBan_{n_loc}.csv", mime="text/csv")
         else: st.info("Sổ chưa có dữ liệu.")
 
 # ==========================================
-# TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO (BẢNG FULL CHUẨN IN PDF)
+# CÁC TAB ẨN DÀNH RIÊNG CHO ADMIN
 # ==========================================
-with tab3:
-    col_t1, col_t2 = st.columns([3, 1])
-    col_t1.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
-    
-    c1, c2 = st.columns([1, 2])
-    bc_nam = c1.selectbox("Chọn Năm báo cáo:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
-    ky_bao_cao_list = ["Cả năm (Tháng 1 - 12)", "Quý I", "Quý II", "Quý III", "Quý IV"] + [f"Tháng {i}" for i in range(1, 13)]
-    bc_ky = c2.selectbox("Chọn Kỳ báo cáo:", ky_bao_cao_list)
-    
-    if st.button("📈 Tạo Báo Cáo", type="primary"):
-        with st.spinner("Đang tổng hợp dữ liệu..."):
-            res_bc = supabase.table("so_van_ban").select("*").eq("nam", bc_nam).execute()
-            df_bc = pd.DataFrame(res_bc.data)
-            
-            if df_bc.empty:
-                st.warning(f"Chưa có dữ liệu văn bản nào trong năm {bc_nam}.")
-            else:
-                df_bc['ngay_datetime'] = pd.to_datetime(df_bc['ngay_van_ban'])
-                df_bc['thang'] = df_bc['ngay_datetime'].dt.month
-                
-                if bc_ky == "Quý I": df_bc = df_bc[df_bc['thang'].isin([1, 2, 3])]
-                elif bc_ky == "Quý II": df_bc = df_bc[df_bc['thang'].isin([4, 5, 6])]
-                elif bc_ky == "Quý III": df_bc = df_bc[df_bc['thang'].isin([7, 8, 9])]
-                elif bc_ky == "Quý IV": df_bc = df_bc[df_bc['thang'].isin([10, 11, 12])]
-                elif bc_ky.startswith("Tháng"): df_bc = df_bc[df_bc['thang'] == int(bc_ky.replace("Tháng ", ""))]
+if is_admin:
+    # --- TAB 3: THỐNG KÊ & BÁO CÁO LÃNH ĐẠO ---
+    with tab3:
+        col_t1, col_t2 = st.columns([3, 1])
+        col_t1.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
+        
+        c1, c2 = st.columns([1, 2])
+        bc_nam = c1.selectbox("Chọn Năm báo cáo:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
+        ky_bao_cao_list = ["Cả năm (Tháng 1 - 12)", "Quý I", "Quý II", "Quý III", "Quý IV"] + [f"Tháng {i}" for i in range(1, 13)]
+        bc_ky = c2.selectbox("Chọn Kỳ báo cáo:", ky_bao_cao_list)
+        
+        if st.button("📈 Tạo Báo Cáo", type="primary"):
+            with st.spinner("Đang tổng hợp dữ liệu..."):
+                res_bc = supabase.table("so_van_ban").select("*").eq("nam", bc_nam).execute()
+                df_bc = pd.DataFrame(res_bc.data)
                 
                 if df_bc.empty:
-                    st.info(f"Không có văn bản nào phát hành trong {bc_ky} năm {bc_nam}.")
+                    st.warning(f"Chưa có dữ liệu văn bản nào trong năm {bc_nam}.")
                 else:
-                    st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
+                    df_bc['ngay_datetime'] = pd.to_datetime(df_bc['ngay_van_ban'])
+                    df_bc['thang'] = df_bc['ngay_datetime'].dt.month
                     
-                    st.markdown("#### ✍️ Thống kê theo Người ký")
-                    pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
-                    pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
-                    # Thêm dòng tổng dưới cùng
-                    pivot_nguoi_ky.loc['TỔNG SỐ (Tất cả Lãnh đạo)'] = pivot_nguoi_ky.sum()
-                    st.table(pivot_nguoi_ky)
+                    if bc_ky == "Quý I": df_bc = df_bc[df_bc['thang'].isin([1, 2, 3])]
+                    elif bc_ky == "Quý II": df_bc = df_bc[df_bc['thang'].isin([4, 5, 6])]
+                    elif bc_ky == "Quý III": df_bc = df_bc[df_bc['thang'].isin([7, 8, 9])]
+                    elif bc_ky == "Quý IV": df_bc = df_bc[df_bc['thang'].isin([10, 11, 12])]
+                    elif bc_ky.startswith("Tháng"): df_bc = df_bc[df_bc['thang'] == int(bc_ky.replace("Tháng ", ""))]
                     
-                    # Biểu đồ Người ký (Loại bỏ dòng Tổng cộng khi vẽ biểu đồ)
-                    st.bar_chart(pivot_nguoi_ky.drop(index='TỔNG SỐ (Tất cả Lãnh đạo)', columns=['TỔNG CỘNG']))
-                    
-                    st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
-                    pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
-                    pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
-                    # Thêm dòng tổng dưới cùng
-                    pivot_phong_ban.loc['TỔNG SỐ (Tất cả Phòng ban)'] = pivot_phong_ban.sum()
-                    st.table(pivot_phong_ban)
-                    
-                    # Biểu đồ Đơn vị (Loại bỏ dòng Tổng cộng khi vẽ biểu đồ)
-                    st.bar_chart(pivot_phong_ban.drop(index='TỔNG SỐ (Tất cả Phòng ban)', columns=['TỔNG CỘNG']))
+                    if df_bc.empty:
+                        st.info(f"Không có văn bản nào phát hành trong {bc_ky} năm {bc_nam}.")
+                    else:
+                        st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
                         
-                    st.markdown("---")
-                    components.html(
-                        """
-                        <style>
-                        .btn-pdf {
-                            background-color: #004B87; color: white; padding: 12px 24px;
-                            text-align: center; text-decoration: none; display: inline-block;
-                            font-size: 16px; font-weight: bold; border-radius: 8px; border: none; 
-                            cursor: pointer; font-family: sans-serif; width: 100%; 
-                            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;
-                        }
-                        .btn-pdf:hover { background-color: #C8102E; }
-                        </style>
-                        <button class="btn-pdf" onclick="window.parent.print()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO THÀNH FILE PDF</button>
-                        """,
-                        height=60
-                    )
+                        st.markdown("#### ✍️ Thống kê theo Người ký")
+                        pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
+                        pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
+                        pivot_nguoi_ky.loc['TỔNG SỐ (Tất cả Lãnh đạo)'] = pivot_nguoi_ky.sum()
+                        st.table(pivot_nguoi_ky)
+                        st.bar_chart(pivot_nguoi_ky.drop(index='TỔNG SỐ (Tất cả Lãnh đạo)', columns=['TỔNG CỘNG']))
+                        
+                        st.markdown("#### 🏢 Thống kê theo Đơn vị soạn thảo")
+                        pivot_phong_ban = pd.crosstab(df_bc['phong_ban'], df_bc['loai_vb'])
+                        pivot_phong_ban['TỔNG CỘNG'] = pivot_phong_ban.sum(axis=1)
+                        pivot_phong_ban.loc['TỔNG SỐ (Tất cả Phòng ban)'] = pivot_phong_ban.sum()
+                        st.table(pivot_phong_ban)
+                        st.bar_chart(pivot_phong_ban.drop(index='TỔNG SỐ (Tất cả Phòng ban)', columns=['TỔNG CỘNG']))
+                            
+                        st.markdown("---")
+                        components.html(
+                            """
+                            <style>
+                            .btn-pdf {
+                                background-color: #004B87; color: white; padding: 12px 24px;
+                                text-align: center; text-decoration: none; display: inline-block;
+                                font-size: 16px; font-weight: bold; border-radius: 8px; border: none; 
+                                cursor: pointer; font-family: sans-serif; width: 100%; 
+                                box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;
+                            }
+                            .btn-pdf:hover { background-color: #C8102E; }
+                            </style>
+                            <button class="btn-pdf" onclick="window.parent.print()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO THÀNH FILE PDF</button>
+                            """,
+                            height=60
+                        )
 
-# ==========================================
-# TAB 4: CẤU HÌNH (ADMIN)
-# ==========================================
-with tab4:
-    st.markdown("### ⚙️ QUẢN TRỊ HỆ THỐNG")
-    mk = st.text_input("Nhập mật khẩu Văn thư:", type="password")
-    if mk == PASS_VAN_THU:
-        st.success("🔓 Đã xác thực")
+    # --- TAB 4: CẤU HÌNH (ADMIN) ---
+    with tab4:
+        st.markdown("### ⚙️ QUẢN TRỊ HỆ THỐNG")
         c_left, c_right = st.columns([1, 1.2])
         
         with c_left:
@@ -260,6 +267,18 @@ with tab4:
                         st.cache_data.clear(); st.rerun()
 
         with c_right:
+            st.markdown("#### 🗑️ Xóa Văn bản Cấp nhầm (Xóa nháp)")
+            st.info("Nhập chính xác Số/Ký hiệu để xóa văn bản khỏi Sổ (VD: 100-TTr-TU)")
+            with st.form("form_del_doc", clear_on_submit=True):
+                doc_to_del = st.text_input("Nhập Số/Ký hiệu cần xóa:")
+                if st.form_submit_button("🗑️ XÓA VĂN BẢN NÀY"):
+                    if doc_to_del:
+                        try:
+                            supabase.table("so_van_ban").delete().eq("ky_hieu", doc_to_del.strip()).execute()
+                            st.success(f"✅ Đã dọn dẹp văn bản: {doc_to_del}"); st.rerun()
+                        except Exception as e: st.error(f"Lỗi: {e}")
+
+            st.write("---")
             st.markdown("#### 🛠️ Quản lý Mồi số hiện tại")
             with st.form("form_config"):
                 cfg_nam = st.selectbox("Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
@@ -273,7 +292,6 @@ with tab4:
                         st.success("✅ Đã cập nhật số mồi!"); st.rerun()
                     except Exception as e: st.error(f"Lỗi: {e}")
             
-            st.write("---")
             st.markdown("**📋 Danh sách các số đã mồi:**")
             res_cfg = supabase.table("cau_hinh_so").select("*").order("nam", desc=True).execute()
             if res_cfg.data:
