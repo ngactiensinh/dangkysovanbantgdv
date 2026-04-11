@@ -141,7 +141,7 @@ else:
                     trich_yeu = st.text_area("📝 Trích yếu nội dung:", height=80)
                     c3, c4, c5 = st.columns([1.5, 1, 1])
                     nguoi_ky = c3.selectbox("✍️ Người ký:", DS_NGUOI_KY)
-                    ngay_vb = c4.date_input("📅 Ngày văn bản:", value=get_vn_now().date(), format="DD/MM/YYYY")
+                    ngay_vb = c4.date_input("📅 Ngày văn bản (Tự động):", value=get_vn_now().date(), format="DD/MM/YYYY", disabled=True)
                     nam_chon = ngay_vb.year
                     c5.info(f"📅 Năm: **{nam_chon}**")
 
