@@ -21,7 +21,7 @@ except:
 # --- MẬT KHẨU ---
 PASS_VAN_THU = "Admin@2026"
 
-# --- HÀM LẤY DANH MỤC ĐỘNG ---
+# --- HÀM LẤY DANH MỤC ĐỘNG TỪ SUPABASE ---
 @st.cache_data(ttl=5)
 def get_dynamic_categories():
     try:
@@ -43,7 +43,7 @@ DS_NGUOI_KY = [
 def get_vn_now():
     return datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
 
-# --- CSS ---
+# --- CSS TÙY CHỈNH ---
 st.markdown("""
 <style>
     .stApp { background-color: #f4f6f9; }
@@ -82,25 +82,36 @@ with tab1:
                     if not trich_yeu.strip(): st.error("⚠️ Nhập trích yếu!")
                     else:
                         try:
+                            # Tìm số lớn nhất đã cấp
                             res_so = supabase.table("so_van_ban").select("so_vb").eq("nam", nam_hien_tai).eq("loai_vb", loai_vb).order("so_vb", desc=True).limit(1).execute()
                             max_so_cap = res_so.data[0]['so_vb'] if res_so.data else 0
+                            
+                            # Tìm số mồi của Văn thư
                             res_moi = supabase.table("cau_hinh_so").select("so_bat_dau").eq("nam", nam_hien_tai).eq("loai_vb", loai_vb).execute()
                             so_moi_admin = res_moi.data[0]['so_bat_dau'] if res_moi.data else 0
                             
+                            # Số cấp = Max(Đã cấp, Mồi) + 1
                             so_moi = max(max_so_cap, so_moi_admin) + 1
                             ky_hieu = f"{so_moi}-{DS_LOAI_VB_DONG[loai_vb]}"
                             
+                            # Lưu database
                             supabase.table("so_van_ban").insert({
                                 "nam": nam_hien_tai, "loai_vb": loai_vb, "so_vb": so_moi, "ky_hieu": ky_hieu, 
                                 "trich_yeu": trich_yeu, "nguoi_ky": nguoi_ky, "phong_ban": phong_ban,
                                 "ngay_van_ban": ngay_vb.strftime("%Y-%m-%d")
                             }).execute()
+                            
                             st.session_state['vua_cap'] = ky_hieu; st.session_state['vua_ngay'] = ngay_vb.strftime("%d/%m/%Y"); st.session_state['vua_ty'] = trich_yeu
                             st.success("✅ Thành công!"); st.rerun()
                         except Exception as e: st.error(f"Lỗi: {e}")
         with col_r:
             if 'vua_cap' in st.session_state:
-                st.markdown(f"<div class='number-display'><div style='font-size:14px; color:#666; font-weight:normal;'>Số văn bản:</div>{st.session_state['vua_cap']}<div style='font-size:14px; color:#666; font-weight:normal; margin-top:10px;'>Ngày văn bản:</div>{st.session_state['vua_ngay']}</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class='number-display'>
+                    <div style='font-size:14px; color:#666; font-weight:normal;'>Số văn bản:</div>{st.session_state['vua_cap']}
+                    <div style='font-size:14px; color:#666; font-weight:normal; margin-top:10px;'>Ngày văn bản:</div>{st.session_state['vua_ngay']}
+                </div>
+                """, unsafe_allow_html=True)
                 st.info(f"**Nội dung:** {st.session_state['vua_ty']}")
 
 # --- TAB 2: TRA CỨU ---
@@ -128,32 +139,38 @@ with tab3:
         c_left, c_right = st.columns([1, 1.2])
         
         with c_left:
-            st.markdown("#### 📁 Danh mục Loại văn bản")
+            st.markdown("#### 📁 Quản lý Danh mục Loại văn bản")
             with st.form("form_add_cate", clear_on_submit=True):
-                new_ten = st.text_input("Tên loại mới:")
-                new_kh = st.text_input("Ký hiệu:")
-                if st.form_submit_button("➕ THÊM"):
+                new_ten = st.text_input("Tên loại mới (VD: Quy định):")
+                # Đã sửa lại gợi ý cho chuẩn với thể thức của Ban
+                new_kh = st.text_input("Ký hiệu đi kèm (VD: QĐi/BTGDV):")
+                if st.form_submit_button("➕ THÊM LOẠI VĂN BẢN MỚI"):
                     if new_ten and new_kh:
-                        supabase.table("danh_muc_loai_vb").insert({"ten_loai": new_ten, "ky_hieu": new_kh}).execute()
-                        st.cache_data.clear(); st.rerun()
+                        try:
+                            supabase.table("danh_muc_loai_vb").insert({"ten_loai": new_ten, "ky_hieu": new_kh}).execute()
+                            st.success(f"✅ Đã thêm '{new_ten}'!"); st.cache_data.clear(); st.rerun()
+                        except: st.error("❌ Bị trùng tên hoặc có lỗi xảy ra.")
+            
             if DS_LOAI_VB_DONG:
+                st.markdown("**Danh sách đang dùng:**")
                 for ten, kh in DS_LOAI_VB_DONG.items():
-                    if st.button(f"🗑️ Xóa {ten}", key=f"del_{kh}"):
+                    if st.button(f"🗑️ Xóa {ten} ({kh})", key=f"del_{kh}"):
                         supabase.table("danh_muc_loai_vb").delete().eq("ten_loai", ten).execute()
                         st.cache_data.clear(); st.rerun()
 
         with c_right:
             st.markdown("#### 🛠️ Quản lý Mồi số hiện tại")
-            # --- PHẦN THÊM MỚI / CẬP NHẬT ---
             with st.form("form_config"):
                 cfg_nam = st.selectbox("Năm:", [get_vn_now().year, get_vn_now().year + 1])
                 cfg_loai = st.selectbox("Loại VB:", list(DS_LOAI_VB_DONG.keys()))
                 cfg_so = st.number_input("Số hiện tại muốn thiết lập:", min_value=0, step=1)
                 if st.form_submit_button("💾 LƯU CẤU HÌNH"):
-                    check = supabase.table("cau_hinh_so").select("*").eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
-                    if check.data: supabase.table("cau_hinh_so").update({"so_bat_dau": cfg_so}).eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
-                    else: supabase.table("cau_hinh_so").insert({"nam": cfg_nam, "loai_vb": cfg_loai, "so_bat_dau": cfg_so}).execute()
-                    st.success("✅ Đã cập nhật!"); st.rerun()
+                    try:
+                        check = supabase.table("cau_hinh_so").select("*").eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
+                        if check.data: supabase.table("cau_hinh_so").update({"so_bat_dau": cfg_so}).eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
+                        else: supabase.table("cau_hinh_so").insert({"nam": cfg_nam, "loai_vb": cfg_loai, "so_bat_dau": cfg_so}).execute()
+                        st.success("✅ Đã cập nhật số mồi!"); st.rerun()
+                    except Exception as e: st.error(f"Lỗi: {e}")
             
             st.write("---")
             st.markdown("**📋 Danh sách các số đã mồi:**")
