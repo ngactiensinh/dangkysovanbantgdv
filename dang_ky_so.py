@@ -67,11 +67,8 @@ st.markdown("""
         .stApp { background-color: #ffffff !important; }
         .header-box { border-top: none; box-shadow: none; margin-bottom: 10px; padding: 0;}
         .report-card { border-left: none; box-shadow: none; padding: 0;}
-        table { font-size: 11px !important; }
+        table { font-size: 11px !important; width: 100% !important; }
         th { background-color: #f0f2f6 !important; }
-        /* Ép bảng chi tiết bung full khi in */
-        .stDataFrame { overflow: visible !important; height: auto !important;}
-        div[data-testid="stDataFrame"] > div { overflow: visible !important; height: auto !important; max-height: none !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -201,7 +198,6 @@ else:
             col_t1.markdown("### 📊 BÁO CÁO TỔNG HỢP VĂN BẢN ĐI")
             c1, c2 = st.columns([1, 2])
             
-            # Khởi tạo session state lưu bộ lọc kỳ báo cáo để khỏi mất khi bấm nút khác
             if 'bc_nam_state' not in st.session_state:
                 st.session_state.bc_nam_state = nam_hien_tai
             if 'bc_ky_state' not in st.session_state:
@@ -211,7 +207,6 @@ else:
             ky_bao_cao_list = ["Cả năm (Tháng 1 - 12)", "Quý I", "Quý II", "Quý III", "Quý IV"] + [f"Tháng {i}" for i in range(1, 13)]
             bc_ky = c2.selectbox("Chọn Kỳ báo cáo:", ky_bao_cao_list, key="sel_bc_ky")
             
-            # Khi người dùng thay đổi lựa chọn, update state và reset df_bc
             if bc_nam != st.session_state.bc_nam_state or bc_ky != st.session_state.bc_ky_state:
                 st.session_state.bc_nam_state = bc_nam
                 st.session_state.bc_ky_state = bc_ky
@@ -233,7 +228,7 @@ else:
                         
                         if not df_bc.empty:
                             df_bc = df_bc.sort_values(by='so_vb', ascending=False)
-                            st.session_state['df_bc'] = df_bc # Lưu vào session state
+                            st.session_state['df_bc'] = df_bc 
                         else:
                             if 'df_bc' in st.session_state: del st.session_state['df_bc']
                             st.info(f"Không có văn bản nào phát hành trong {bc_ky} năm {bc_nam}.")
@@ -241,12 +236,11 @@ else:
                         if 'df_bc' in st.session_state: del st.session_state['df_bc']
                         st.warning(f"Chưa có dữ liệu văn bản nào trong năm {bc_nam}.")
             
-            # --- HIỂN THỊ BÁO CÁO (CHUNG BIẾN SESSION STATE) ---
+            # --- HIỂN THỊ BÁO CÁO ---
             if 'df_bc' in st.session_state:
                 df_bc = st.session_state['df_bc']
                 st.markdown(f"<div class='report-card'><b>TỔNG SỐ VĂN BẢN PHÁT HÀNH TRONG KỲ:</b> <span style='font-size: 24px; color: #C8102E;'>{len(df_bc)}</span></div>", unsafe_allow_html=True)
                 
-                # 1. Bảng biểu Thống kê tổng hợp
                 st.markdown("#### ✍️ Thống kê theo Người ký")
                 pivot_nguoi_ky = pd.crosstab(df_bc['nguoi_ky'], df_bc['loai_vb'])
                 pivot_nguoi_ky['TỔNG CỘNG'] = pivot_nguoi_ky.sum(axis=1)
@@ -263,28 +257,24 @@ else:
                 
                 st.markdown("---")
                 
-                # 2. Danh sách chi tiết có Bộ lọc
                 st.markdown(f"### 📋 DANH SÁCH CHI TIẾT VĂN BẢN ({bc_ky} năm {bc_nam})")
-                
-                # Bộ lọc thể loại
                 ds_the_loai_co_san = df_bc['loai_vb'].unique().tolist()
                 loc_loai = st.selectbox("📌 Lọc theo Thể loại:", ["Tất cả"] + ds_the_loai_co_san)
                 
-                # Apply bộ lọc
                 df_chitiet = df_bc.copy()
                 if loc_loai != "Tất cả":
                     df_chitiet = df_chitiet[df_chitiet['loai_vb'] == loc_loai]
                 
                 st.info(f"Hiển thị **{len(df_chitiet)}** văn bản.")
                 
-                # Chuẩn bị dữ liệu để hiển thị
                 df_chitiet['ngay_van_ban'] = pd.to_datetime(df_chitiet['ngay_van_ban']).dt.strftime("%d/%m/%Y")
                 df_show = df_chitiet[['ky_hieu', 'loai_vb', 'ngay_van_ban', 'trich_yeu', 'nguoi_ky', 'phong_ban']].rename(
                     columns={'ky_hieu':'Số/Ký hiệu', 'loai_vb':'Thể loại', 'ngay_van_ban':'Ngày VB', 'trich_yeu':'Trích yếu', 'nguoi_ky':'Người ký', 'phong_ban':'Phòng tham mưu'}
                 )
                 
-                # Hiển thị bảng chi tiết
-                st.dataframe(df_show, use_container_width=True)
+                # CẬP NHẬT: Đổi sang st.table để in PDF full dòng, tạo cột STT cho đẹp
+                df_show.index = range(1, len(df_show) + 1)
+                st.table(df_show)
                 
                 st.markdown("---")
                 components.html(
