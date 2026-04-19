@@ -291,6 +291,7 @@ else:
         with tab4:
             st.markdown("### ⚙️ QUẢN TRỊ HỆ THỐNG")
             c_left, c_right = st.columns([1, 1.2])
+            
             with c_left:
                 st.markdown("#### 📁 Quản lý Danh mục Loại văn bản")
                 with st.form("form_add_cate", clear_on_submit=True):
@@ -300,28 +301,60 @@ else:
                         if new_ten and new_kh:
                             try:
                                 supabase.table("danh_muc_loai_vb").insert({"ten_loai": new_ten, "ky_hieu": new_kh}).execute()
-                                st.success(f"✅ Đã thêm '{new_ten}'!"); st.cache_data.clear(); st.rerun()
-                            except: st.error("❌ Bị trùng tên hoặc có lỗi xảy ra.")
+                                st.success(f"✅ Đã thêm '{new_ten}'!")
+                                st.cache_data.clear()
+                                st.rerun()
+                            except: 
+                                st.error("❌ Bị trùng tên hoặc có lỗi xảy ra.")
                 if DS_LOAI_VB_DONG:
                     st.markdown("**Danh sách đang dùng:**")
                     for ten, kh in DS_LOAI_VB_DONG.items():
                         if st.button(f"🗑️ Xóa {ten} ({kh})", key=f"del_{kh}"):
                             supabase.table("danh_muc_loai_vb").delete().eq("ten_loai", ten).execute()
-                            st.cache_data.clear(); st.rerun()
+                            st.cache_data.clear()
+                            st.rerun()
 
             with c_right:
+                # ==================================================
+                # CHỨC NĂNG MỚI: CHỈNH SỬA NGƯỜI KÝ VĂN BẢN
+                # ==================================================
+                st.markdown("#### ✏️ Thay đổi Người ký văn bản")
+                st.info("Nhập Số/Ký hiệu để đổi Lãnh đạo ký duyệt (VD: 100-TTr/BTGDV)")
+                with st.form("form_edit_signer", clear_on_submit=True):
+                    doc_to_edit = st.text_input("Số/Ký hiệu văn bản cần sửa:")
+                    new_signer = st.selectbox("Chọn Lãnh đạo ký mới:", DS_NGUOI_KY)
+                    if st.form_submit_button("🔄 CẬP NHẬT NGƯỜI KÝ"):
+                        if doc_to_edit:
+                            try:
+                                # Kiểm tra xem văn bản có tồn tại không
+                                check_doc = supabase.table("so_van_ban").select("ky_hieu").eq("ky_hieu", doc_to_edit.strip()).execute()
+                                if check_doc.data:
+                                    # Tiến hành cập nhật người ký
+                                    supabase.table("so_van_ban").update({"nguoi_ky": new_signer}).eq("ky_hieu", doc_to_edit.strip()).execute()
+                                    st.success(f"✅ Đã đổi người ký văn bản {doc_to_edit.strip()} thành {new_signer}!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Không tìm thấy Số/Ký hiệu này trong sổ!")
+                            except Exception as e: 
+                                st.error(f"Lỗi: {e}")
+
+                st.write("---")
+                
                 st.markdown("#### 🗑️ Xóa Văn bản Cấp nhầm (Xóa nháp)")
-                st.info("Nhập chính xác Số/Ký hiệu để xóa văn bản khỏi Sổ (VD: 100-TTr/BTGDV)")
+                st.info("Nhập chính xác Số/Ký hiệu để xóa văn bản khỏi Sổ")
                 with st.form("form_del_doc", clear_on_submit=True):
                     doc_to_del = st.text_input("Nhập Số/Ký hiệu cần xóa:")
                     if st.form_submit_button("🗑️ XÓA VĂN BẢN NÀY"):
                         if doc_to_del:
                             try:
                                 supabase.table("so_van_ban").delete().eq("ky_hieu", doc_to_del.strip()).execute()
-                                st.success(f"✅ Đã dọn dẹp văn bản: {doc_to_del}"); st.rerun()
-                            except Exception as e: st.error(f"Lỗi: {e}")
+                                st.success(f"✅ Đã dọn dẹp văn bản: {doc_to_del}")
+                                st.rerun()
+                            except Exception as e: 
+                                st.error(f"Lỗi: {e}")
 
                 st.write("---")
+                
                 st.markdown("#### 🛠️ Quản lý Mồi số hiện tại")
                 with st.form("form_config"):
                     cfg_nam = st.selectbox("Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
@@ -330,10 +363,15 @@ else:
                     if st.form_submit_button("💾 LƯU CẤU HÌNH"):
                         try:
                             check = supabase.table("cau_hinh_so").select("*").eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
-                            if check.data: supabase.table("cau_hinh_so").update({"so_bat_dau": cfg_so}).eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
-                            else: supabase.table("cau_hinh_so").insert({"nam": cfg_nam, "loai_vb": cfg_loai, "so_bat_dau": cfg_so}).execute()
-                            st.success("✅ Đã cập nhật số mồi!"); st.rerun()
-                        except Exception as e: st.error(f"Lỗi: {e}")
+                            if check.data: 
+                                supabase.table("cau_hinh_so").update({"so_bat_dau": cfg_so}).eq("nam", cfg_nam).eq("loai_vb", cfg_loai).execute()
+                            else: 
+                                supabase.table("cau_hinh_so").insert({"nam": cfg_nam, "loai_vb": cfg_loai, "so_bat_dau": cfg_so}).execute()
+                            st.success("✅ Đã cập nhật số mồi!")
+                            st.rerun()
+                        except Exception as e: 
+                            st.error(f"Lỗi: {e}")
+                            
                 st.markdown("**📋 Danh sách các số đã mồi:**")
                 res_cfg = supabase.table("cau_hinh_so").select("*").order("nam", desc=True).execute()
                 if res_cfg.data:
@@ -342,5 +380,7 @@ else:
                         col_info.write(f"📅 **{item['nam']}** | {item['loai_vb']}: Số **{item['so_bat_dau']}**")
                         if col_del.button("🗑️ Xóa", key=f"del_cfg_{item['id']}"):
                             supabase.table("cau_hinh_so").delete().eq("id", item['id']).execute()
-                            st.warning(f"Đã xóa cấu hình {item['loai_vb']}"); st.rerun()
-                else: st.info("Chưa có cấu hình mồi số nào.")
+                            st.warning(f"Đã xóa cấu hình {item['loai_vb']}")
+                            st.rerun()
+                else: 
+                    st.info("Chưa có cấu hình mồi số nào.")
