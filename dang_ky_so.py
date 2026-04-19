@@ -340,7 +340,7 @@ else:
 
                 st.write("---")
                 
-                st.markdown("#### 🗑️ Xóa Văn bản Cấp nhầm (Xóa nháp)")
+                st.markdown("#### 🗑️ Xóa Văn bản Cấp nhầm")
                 st.info("Nhập chính xác Số/Ký hiệu để xóa văn bản khỏi Sổ")
                 with st.form("form_del_doc", clear_on_submit=True):
                     doc_to_del = st.text_input("Nhập Số/Ký hiệu cần xóa:")
@@ -355,7 +355,7 @@ else:
 
                 st.write("---")
                 
-                st.markdown("#### 🛠️ Quản lý Mồi số hiện tại")
+                st.markdown("#### 🛠️ Quản lý số hiện tại")
                 with st.form("form_config"):
                     cfg_nam = st.selectbox("Năm:", DS_NAM_NHIEM_KY, index=idx_nam_hien_tai)
                     cfg_loai = st.selectbox("Loại VB:", list(DS_LOAI_VB_DONG.keys()))
