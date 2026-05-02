@@ -343,15 +343,68 @@ else:
                 st.table(df_show)
                 
                 st.markdown("---")
-                components.html(
-                    """
-                    <style>
-                    .btn-pdf { background-color: #004B87; color: white; padding: 12px 24px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; font-family: sans-serif; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;}
-                    .btn-pdf:hover { background-color: #C8102E; }
-                    </style>
-                    <button class="btn-pdf" onclick="window.parent.print()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO VÀ DANH SÁCH THÀNH FILE PDF</button>
-                    """, height=60
-                )
+                
+                # 1. Chuyển bảng danh sách chi tiết thành dạng HTML
+                bang_html = df_show.to_html(index=False, border=1)
+                
+                # 2. Tạo lệnh Javascript gắp dữ liệu vào trang in vô hình
+                code_in_html = f"""
+                <html>
+                <head>
+                <style>
+                    .btn-pdf {{ background-color: #004B87; color: white; padding: 12px 24px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; font-family: sans-serif; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;}}
+                    .btn-pdf:hover {{ background-color: #C8102E; }}
+                </style>
+                <script>
+                    function inBaoCao() {{
+                        // Dựng khung sườn cho bản in đúng chuẩn
+                        var noiDung = `
+                            <div style="font-family: 'Times New Roman', serif; max-width: 100% !important; margin: 0 auto; padding: 10px;">
+                                <h2 style="text-align: center; font-size: 22px; text-transform: uppercase;">BÁO CÁO TỔNG HỢP VĂN BẢN ĐI</h2>
+                                <p style="font-size: 16px; margin-bottom: 5px;"><b>Năm báo cáo:</b> {bc_nam}</p>
+                                <p style="font-size: 16px; margin-top: 0;"><b>Kỳ báo cáo:</b> {bc_ky}</p>
+                                <h3 style="font-size: 18px; margin-top: 30px;">DANH SÁCH CHI TIẾT VĂN BẢN:</h3>
+                                <style>
+                                    table {{ width: 100%; border-collapse: collapse; margin-top: 10px; page-break-inside: auto; }}
+                                    tr {{ page-break-inside: avoid; page-break-after: auto; }}
+                                    th, td {{ border: 1px solid black; padding: 8px; text-align: left; font-size: 14px; vertical-align: top; }}
+                                    th {{ background-color: #f2f2f2; text-align: center; }}
+                                </style>
+                                {bang_html}
+                            </div>
+                        `;
+                        
+                        // Tạo một khung iframe tàng hình để nhét nội dung vào
+                        var iframe = document.createElement('iframe');
+                        iframe.style.visibility = 'hidden';
+                        iframe.style.position = 'absolute';
+                        iframe.style.right = '0';
+                        iframe.style.bottom = '0';
+                        document.body.appendChild(iframe);
+                        
+                        // Bơm nội dung vào iframe và gọi lệnh in
+                        iframe.contentWindow.document.write('<html><head><title>Bản in Báo Cáo</title></head><body>');
+                        iframe.contentWindow.document.write(noiDung);
+                        iframe.contentWindow.document.write('</body></html>');
+                        iframe.contentWindow.document.close();
+                        
+                        setTimeout(function() {{
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                            // In xong thì tự động xóa khung tàng hình cho nhẹ máy
+                            setTimeout(function() {{
+                                document.body.removeChild(iframe);
+                            }}, 1000);
+                        }}, 200);
+                    }}
+                </script>
+                </head>
+                <body>
+                    <button class="btn-pdf" onclick="inBaoCao()">🖨️ BẤM VÀO ĐÂY ĐỂ IN / LƯU BÁO CÁO VÀ DANH SÁCH THÀNH FILE PDF</button>
+                </body>
+                </html>
+                """
+                components.html(code_in_html, height=60)
 
         # --- TAB 4: CẤU HÌNH (ADMIN) ---
         with tab4:
