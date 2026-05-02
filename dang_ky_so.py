@@ -447,7 +447,12 @@ else:
                                     check_doc = supabase.table("so_van_ban").select("ky_hieu").eq("ky_hieu", doc_to_edit.strip()).execute()
                                     if check_doc.data:
                                         supabase.table("so_van_ban").update({"nguoi_ky": new_signer}).eq("ky_hieu", doc_to_edit.strip()).execute()
-                                        st.success(f"✅ Đã đổi người ký thành {new_signer}!"); st.rerun()
+                                        
+                                        # HIỆN THÔNG BÁO VÀ DỪNG 1.5 GIÂY TRƯỚC KHI TẢI LẠI
+                                        st.success(f"✅ Cập nhật thành công! Đã đổi người ký thành {new_signer}.")
+                                        time.sleep(1.5) 
+                                        st.rerun()
+                                        
                                     else: st.error("❌ Không tìm thấy Số/Ký hiệu này!")
                                 except Exception as e: st.error(f"Lỗi: {e}")
 
@@ -463,7 +468,12 @@ else:
                                     if check_doc.data:
                                         date_str = new_date.strftime("%Y-%m-%d")
                                         supabase.table("so_van_ban").update({"ngay_van_ban": date_str}).eq("ky_hieu", doc_to_edit_date.strip()).execute()
-                                        st.success(f"✅ Đã đổi ngày ban hành thành {new_date.strftime('%d/%m/%Y')}!"); st.rerun()
+                                        
+                                        # HIỆN THÔNG BÁO VÀ DỪNG 1.5 GIÂY TRƯỚC KHI TẢI LẠI
+                                        st.success(f"✅ Cập nhật thành công! Đã đổi ngày ban hành thành {new_date.strftime('%d/%m/%Y')}.")
+                                        time.sleep(1.5) 
+                                        st.rerun()
+                                        
                                     else: st.error("❌ Không tìm thấy Số/Ký hiệu này!")
                                 except Exception as e: st.error(f"Lỗi: {e}")
 
