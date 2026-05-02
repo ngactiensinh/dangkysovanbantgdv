@@ -486,8 +486,19 @@ else:
                     if c6.form_submit_button("🗑️ XÓA VĂN BẢN", type="primary", use_container_width=True):
                         if doc_to_del:
                             try:
-                                supabase.table("so_van_ban").delete().eq("ky_hieu", doc_to_del.strip()).execute()
-                                st.success(f"✅ Đã dọn dẹp văn bản: {doc_to_del}"); st.rerun()
+                                # Kiểm tra xem văn bản có thực sự tồn tại trong DB không
+                                check_doc = supabase.table("so_van_ban").select("ky_hieu").eq("ky_hieu", doc_to_del.strip()).execute()
+                                
+                                if check_doc.data:
+                                    supabase.table("so_van_ban").delete().eq("ky_hieu", doc_to_del.strip()).execute()
+                                    
+                                    # HIỆN THÔNG BÁO VÀ DỪNG 1.5 GIÂY TRƯỚC KHI TẢI LẠI
+                                    st.success(f"✅ Xóa thành công! Đã dọn dẹp văn bản: {doc_to_del}")
+                                    time.sleep(1.5)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Không tìm thấy Số/Ký hiệu này trong Sổ. Vui lòng kiểm tra lại!")
+                                    
                             except Exception as e: st.error(f"Lỗi: {e}")
 
             with st.expander("🔢 4. QUẢN LÝ SỐ BẮT ĐẦU (MỒI SỐ)", expanded=False):
